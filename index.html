@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Prompts & Referências</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-[#F9FAFB] text-slate-800 min-h-screen">
+
+    <div class="max-w-5xl mx-auto px-4 py-10">
+        <header class="mb-10 text-center md:text-left flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-slate-900">Gerenciador de Prompts</h1>
+                <p class="text-slate-500 mt-1">Repositório interno de referências visuais e engenharia de prompt para a equipe.</p>
+            </div>
+        </header>
+
+        <section class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm mb-12">
+            <h2 id="form-title" class="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
+                <i class="fa-solid fa-plus text-sm text-indigo-600"></i> Novo Registro
+            </h2>
+            
+            <form id="prompt-form" class="space-y-5">
+                <input type="hidden" id="entry-id">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="flex flex-col gap-1.5">
+                        <label for="title" class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Título do Prompt</label>
+                        <input type="text" id="title" required placeholder="Ex: Capa Azul Premium - Caixas" 
+                            class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 text-sm transition-colors">
+                    </div>
+
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Imagem de Referência (Upload Local)</label>
+                        <div class="flex items-center gap-3">
+                            <label for="image-file" class="cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 flex-1 justify-center md:justify-start">
+                                <i class="fa-solid fa-cloud-arrow-up text-indigo-500"></i>
+                                <span id="file-label-text">Selecionar imagem...</span>
+                            </label>
+                            <input type="file" id="image-file" accept="image/*" class="hidden">
+                            
+                            <div id="image-preview-container" class="hidden w-11 h-11 rounded-lg border border-slate-200 overflow-hidden shrink-0 bg-slate-50">
+                                <img id="image-preview" src="" class="w-full h-full object-cover">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <label for="prompt-text" class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Prompt Comando</label>
+                    <textarea id="prompt-text" required rows="4" placeholder="Cole aqui o comando completo que será copiado pela equipe..." 
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 text-sm transition-colors resize-none"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" id="btn-cancel" class="hidden px-5 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btn-submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-all shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Salvar Registro
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <main>
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-xl font-bold text-slate-900 tracking-tight">Galeria da Equipe</h2>
+                    <span id="counter" class="text-xs font-semibold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full border border-slate-200">0 itens</span>
+                </div>
+                
+                <div class="relative w-full md:w-80">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                    </span>
+                    <input type="text" id="search-input" placeholder="Pesquisar prompts por título..." 
+                        class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-indigo-500 text-sm bg-white transition-colors">
+                </div>
+            </div>
+            
+            <div id="gallery-grid" class="grid grid-cols-1 gap-6">
+                <div id="empty-state" class="text-center py-20 border border-dashed border-slate-200 rounded-2xl bg-white">
+                    <i class="fa-solid fa-images text-slate-300 text-4xl mb-3"></i>
+                    <p class="text-slate-500 text-sm">Nenhum prompt cadastrado ainda ou nenhum resultado encontrado.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { 
+            getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc 
+        } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        // ===================================================
+        // CREDENCIAIS DO SEU FIREBASE CONFIGURADAS
+        // ===================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyB2r45MjuRd1pI2FaYZu9k5uVN2JO4eyyI",
+            authDomain: "pasta-prompts.firebaseapp.com",
+            projectId: "pasta-prompts",
+            storageBucket: "pasta-prompts.firebasestorage.app",
+            messagingSenderId: "690573876670",
+            appId: "1:690573876670:web:2233804e9e29f037686def"
+        };
+
+        // Inicializando o Firebase e o Banco de Dados Firestore
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const collectionRef = collection(db, "prompts");
+
+        // Elementos do HTML capturados pelo JavaScript
+        const promptForm = document.getElementById('prompt-form');
+        const entryIdInput = document.getElementById('entry-id');
+        const titleInput = document.getElementById('title');
+        const imageFileInput = document.getElementById('image-file');
+        const fileLabelText = document.getElementById('file-label-text');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const promptTextInput = document.getElementById('prompt-text');
+        const galleryGrid = document.getElementById('gallery-grid');
+        const emptyState = document.getElementById('empty-state');
+        const counterSpan = document.getElementById('counter');
+        const searchInput = document.getElementById('search-input');
+        
+        const formTitle = document.getElementById('form-title');
+        const btnSubmit = document.getElementById('btn-submit');
+        const btnCancel = document.getElementById('btn-cancel');
+
+        // Variável global para armazenar a string Base64 da imagem selecionada
+        let currentBase64Image = "";
+        let localPromptsArray = [];
+        const fallbackImage = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=256&auto=format&fit=crop';
+
+        // LÓGICA DIRETA DE CONVERSÃO PARA BASE64 (Compatível com abertura local file:///)
+        imageFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            fileLabelText.innerText = file.name;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                // Salva o Base64 gerado diretamente de forma compatível e segura
+                currentBase64Image = event.target.result;
+                
+                // Exibe a miniatura no formulário de preview
+                imagePreview.src = currentBase64Image;
+                imagePreviewContainer.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 1. SALVAR OU ATUALIZAR DADOS
+        promptForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const id = entryIdInput.value;
+            
+            const data = {
+                title: titleInput.value.trim(),
+                prompt: promptTextInput.value.trim(),
+                imageUrl: currentBase64Image || fallbackImage,
+                updatedAt: new Date()
+            };
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Salvando...`;
+
+            try {
+                if (id) {
+                    // Modo Edição: Atualiza documento existente
+                    const docRef = doc(db, "prompts", id);
+                    await updateDoc(docRef, data);
+                } else {
+                    // Modo Criação: Insere novo documento com data de criação
+                    data.createdAt = new Date();
+                    await addDoc(collectionRef, data);
+                }
+                resetForm();
+            } catch (error) {
+                console.error("Erro ao salvar dados no Firestore: ", error);
+                alert("Ocorreu um erro ao tentar salvar os dados. Verifique se o arquivo da imagem não é excessivamente pesado.");
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<i class="fa-solid fa-check"></i> Salvar Registro`;
+            }
+        });
+
+        // 2. ESCUTA EM TEMPO REAL DO BANCO DE DADOS
+        const q = query(collectionRef, orderBy("createdAt", "desc"));
+        onSnapshot(q, (snapshot) => {
+            localPromptsArray = [];
+            
+            snapshot.forEach((doc) => {
+                localPromptsArray.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+
+            renderGallery(localPromptsArray);
+        });
+
+        // 3. FUNÇÃO QUE RENDERIZA OS CARDS EM TELA
+        function renderGallery(prompts) {
+            galleryGrid.innerHTML = "";
+            
+            if (prompts.length === 0) {
+                galleryGrid.appendChild(emptyState);
+                counterSpan.innerText = "0 itens";
+                return;
+            }
+
+            counterSpan.innerText = `${prompts.length} ${prompts.length === 1 ? 'item' : 'itens'}`;
+
+            prompts.forEach((item) => {
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-sm flex flex-col md:flex-row transition-all hover:shadow-md";
+                
+                const safePrompt = item.prompt.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+                const safeTitle = item.title.replace(/"/g, '&quot;');
+
+                card.innerHTML = `
+                    <div class="w-full md:w-48 h-40 md:h-auto bg-slate-50 shrink-0 relative overflow-hidden group border-b md:border-b-0 md:border-r border-slate-100">
+                        <img src="${item.imageUrl}" alt="${safeTitle}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" onerror="this.src='${fallbackImage}'">
+                    </div>
+                    <div class="p-5 flex-1 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-start justify-between gap-4 mb-3">
+                                <h3 class="font-semibold text-slate-900 text-base leading-snug">${item.title}</h3>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <button onclick="copyPrompt(this, \`${safePrompt}\`)" title="Copiar Prompt" class="text-slate-400 hover:text-indigo-600 p-1.5 rounded-md hover:bg-slate-50 transition-colors">
+                                        <i class="fa-regular fa-copy text-sm"></i>
+                                    </button>
+                                    <button onclick="downloadImage(\`${item.imageUrl}\`, '${safeTitle}')" title="Baixar Imagem" class="text-slate-400 hover:text-emerald-600 p-1.5 rounded-md hover:bg-slate-50 transition-colors">
+                                        <i class="fa-solid fa-arrow-down text-sm"></i>
+                                    </button>
+                                    <button onclick="editEntry('${item.id}', \`${safeTitle}\`, \`${safePrompt}\`, \`${item.imageUrl}\`)" title="Editar" class="text-slate-400 hover:text-amber-600 p-1.5 rounded-md hover:bg-slate-50 transition-colors">
+                                        <i class="fa-regular fa-pen-to-square text-sm"></i>
+                                    </button>
+                                    <button onclick="deleteEntry('${item.id}')" title="Excluir" class="text-slate-400 hover:text-red-600 p-1.5 rounded-md hover:bg-slate-50 transition-colors">
+                                        <i class="fa-regular fa-trash-can text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-slate-600 text-sm whitespace-pre-wrap font-mono bg-slate-50 border border-slate-100 p-3 rounded-lg max-h-24 overflow-y-auto">${item.prompt}</p>
+                        </div>
+                    </div>
+                `;
+                galleryGrid.appendChild(card);
+            });
+        }
+
+        // 4. LÓGICA DO FILTRO DE BUSCA (EM TEMPO REAL)
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            const filteredPrompts = localPromptsArray.filter(item => 
+                item.title.toLowerCase().includes(searchTerm)
+            );
+            renderGallery(filteredPrompts);
+        });
+
+        // 5. FUNÇÕES GLOBAIS (COPIAR E BAIXAR IMAGEM EM BASE64)
+        window.copyPrompt = (button, text) => {
+            navigator.clipboard.writeText(text).then(() => {
+                const icon = button.querySelector('i');
+                icon.className = "fa-solid fa-check text-green-500";
+                button.classList.add('bg-green-50');
+                
+                setTimeout(() => {
+                    icon.className = "fa-regular fa-copy text-sm";
+                    button.classList.remove('bg-green-50');
+                }, 2000);
+            }).catch(err => console.error("Falha ao copiar texto: ", err));
+        };
+
+        window.downloadImage = (base64Data, title) => {
+            const link = document.createElement('a');
+            link.href = base64Data;
+            link.download = `${title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-ref.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        window.editEntry = (id, title, prompt, imageUrl) => {
+            entryIdInput.value = id;
+            titleInput.value = title;
+            promptTextInput.value = prompt;
+            
+            currentBase64Image = imageUrl;
+            if (imageUrl && imageUrl !== fallbackImage) {
+                imagePreview.src = imageUrl;
+                imagePreviewContainer.classList.remove('hidden');
+                fileLabelText.innerText = "Imagem carregada (Alterar...)";
+            } else {
+                imagePreviewContainer.classList.add('hidden');
+                fileLabelText.innerText = "Selecionar imagem...";
+            }
+
+            formTitle.innerHTML = `<i class="fa-regular fa-pen-to-square text-sm text-amber-500"></i> Editando Registro`;
+            btnSubmit.innerHTML = `<i class="fa-solid fa-check"></i> Atualizar`;
+            btnSubmit.className = "bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-all shadow-sm flex items-center gap-2";
+            btnCancel.classList.remove('hidden');
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.deleteEntry = async (id) => {
+            if (!confirm("Tem certeza que deseja remover este prompt permanentemente?")) return;
+            try {
+                await deleteDoc(doc(db, "prompts", id));
+            } catch (error) {
+                console.error("Erro ao deletar documento: ", error);
+                alert("Erro ao tentar remover o registro.");
+            }
+        };
+
+        function resetForm() {
+            promptForm.reset();
+            entryIdInput.value = "";
+            currentBase64Image = "";
+            fileLabelText.innerText = "Selecionar imagem...";
+            imagePreviewContainer.classList.add('hidden');
+            imagePreview.src = "";
+            
+            formTitle.innerHTML = `<i class="fa-solid fa-plus text-sm text-indigo-600"></i> Novo Registro`;
+            btnSubmit.innerHTML = `<i class="fa-solid fa-check"></i> Salvar Registro`;
+            btnSubmit.className = "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-all shadow-sm flex items-center gap-2";
+            btnCancel.classList.add('hidden');
+        }
+
+        btnCancel.addEventListener('click', resetForm);
+    </script>
+</body>
+</html>
